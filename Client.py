@@ -23,6 +23,7 @@ res = ClientMultiSocket.recv(1024)
 
 # check if account number exists on server
 if res.decode('utf-8') == 'Account exists':
+
     # prompt user for password
     password = input('Please enter your password: ')
 
@@ -49,43 +50,46 @@ if res.decode('utf-8') == 'Account exists':
         while True:
             # prompt user for command
             command = input('Please enter a command (deposit, withdraw, transfer): ').strip().split()
+            if len(command) > 0:
+                # handle deposit command
+                if command[0] == 'balance' and len(command) == 1:
+                    ClientMultiSocket.send(str.encode('balance'))
+                    res = ClientMultiSocket.recv(1024)
+                    print(res.decode('utf-8'))
 
-            # handle deposit command
-            if command[0] == 'balance' and len(command) == 1:
-                ClientMultiSocket.send(str.encode('balance'))
-                res = ClientMultiSocket.recv(1024)
-                print(res.decode('utf-8'))
+                elif command[0] == 'deposit' and len(command) == 2:
+                    amount = int(command[1])
+                    ClientMultiSocket.send(str.encode(f'deposit {account_number} {amount}'))
+                    res = ClientMultiSocket.recv(1024)
+                    print(res.decode('utf-8'))
 
-            elif command[0] == 'deposit' and len(command) == 2:
-                amount = int(command[1])
-                ClientMultiSocket.send(str.encode(f'deposit {account_number} {amount}'))
-                res = ClientMultiSocket.recv(1024)
-                print(res.decode('utf-8'))
+                # handle withdraw command
+                elif command[0] == 'withdraw' and len(command) == 2:
+                    amount = int(command[1])
+                    ClientMultiSocket.send(str.encode(f'withdraw {account_number} {amount}'))
+                    res = ClientMultiSocket.recv(1024)
+                    print(res.decode('utf-8'))
 
-            # handle withdraw command
-            elif command[0] == 'withdraw' and len(command) == 2:
-                amount = int(command[1])
-                ClientMultiSocket.send(str.encode(f'withdraw {account_number} {amount}'))
-                res = ClientMultiSocket.recv(1024)
-                print(res.decode('utf-8'))
+                # handle transfer command
+                elif command[0] == 'transfer' and len(command) == 3:
+                    dst_acc = command[1]
+                    amount = float(command[2])
+                    ClientMultiSocket.send(str.encode(f'transfer {account_number} {dst_acc} {amount}'))
+                    res = ClientMultiSocket.recv(1024)
+                    print(res.decode('utf-8'))
+                elif command[0] == 'logout' and len(command) == 1:
+                    ClientMultiSocket.send(str.encode(f'logout {account_number}'))
+                    res = ClientMultiSocket.recv(1024)
+                    print(res.decode('utf-8'))
+                    break
 
-            # handle transfer command
-            elif command[0] == 'transfer' and len(command) == 3:
-                dst_acc = command[1]
-                amount = float(command[2])
-                ClientMultiSocket.send(str.encode(f'transfer {account_number} {dst_acc} {amount}'))
-                res = ClientMultiSocket.recv(1024)
-                print(res.decode('utf-8'))
-            elif command[0] == 'logout' and len(command) == 1:
-                ClientMultiSocket.send(str.encode(f'logout {account_number}'))
-                res = ClientMultiSocket.recv(1024)
-                print(res.decode('utf-8'))
-                break
 
-            # handle invalid command
+                # handle invalid command
+                else:
+                    print('Invalid command. Please try again.')
             else:
-                print('Invalid command. Please try again.')
-
+                print('Please enter a command.')
+        ClientMultiSocket.close()
     # handle login failure
     else:
         print('Incorrect password. Please try again.')
