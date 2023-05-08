@@ -40,6 +40,7 @@ if res.decode('utf-8') == 'Account exists':
         print(welcome_message)
         print(balance_message)
         print("\nCommands:")
+        print("- - - - \"balance\"    |    to check balance")
         print("- - - - \"deposit {amount}\"    |    to deposit funds")
         print("- - - - \"withdraw {amount}\"    |    to withdraw funds")
         print("- - - - \"transfer {{destination account number}} {{amount}}\"    |    to transfer funds")
@@ -50,7 +51,12 @@ if res.decode('utf-8') == 'Account exists':
             command = input('Please enter a command (deposit, withdraw, transfer): ').strip().split()
 
             # handle deposit command
-            if command[0] == 'deposit' and len(command) == 2:
+            if command[0] == 'balance' and len(command) == 1:
+                ClientMultiSocket.send(str.encode('balance'))
+                res = ClientMultiSocket.recv(1024)
+                print(res.decode('utf-8'))
+
+            elif command[0] == 'deposit' and len(command) == 2:
                 amount = int(command[1])
                 ClientMultiSocket.send(str.encode(f'deposit {account_number} {amount}'))
                 res = ClientMultiSocket.recv(1024)
@@ -70,6 +76,11 @@ if res.decode('utf-8') == 'Account exists':
                 ClientMultiSocket.send(str.encode(f'transfer {account_number} {dst_acc} {amount}'))
                 res = ClientMultiSocket.recv(1024)
                 print(res.decode('utf-8'))
+            elif command[0] == 'logout' and len(command) == 1:
+                ClientMultiSocket.send(str.encode(f'logout {account_number}'))
+                res = ClientMultiSocket.recv(1024)
+                print(res.decode('utf-8'))
+                break
 
             # handle invalid command
             else:

@@ -17,6 +17,14 @@ def get_user(account_number):
     return None
 
 
+def get_balance(account_number):
+    user = get_user(account_number)
+    if user:
+        return user['Balance']
+    else:
+        return None
+
+
 def account_exit(account_number):
     for user in users:
         if user['AccountNumber'] == account_number:
@@ -43,7 +51,8 @@ def update_users():
         writer.writeheader()
         for user in users:
             writer.writerow(user)
-        print('The user list has been updated.')
+        print('The users list has been updated.')
+
 
 
 def update_user_list(account):
@@ -57,7 +66,7 @@ def deposit(account, amount):
     if amount > 0:
         account['Balance'] = float(account['Balance']) + amount
         update_user_list(account)
-        print(f'Deposited {amount} into the account nr. {account["AccountNumber"]}')
+        print(f'Deposited {amount} into the account nr:{account["AccountNumber"]}')
         print(f'New balance: {account["Balance"]}')
         return True
     else:
@@ -68,7 +77,7 @@ def withdraw(account, amount):
     if amount > 0:
         account['Balance'] = float(account['Balance']) - amount
         update_user_list(account)
-        print(f'{amount} has been withdrawn to account nr. {account["AccountNumber"]}')
+        print(f'{amount} has been withdrawn to account nr:{account["AccountNumber"]}')
         print(f'New balance: {account["Balance"]}')
         return True
     else:
@@ -85,9 +94,11 @@ def transfer(src_acc, dst_acc, amount):
             if user['AccountNumber'] == dst_acc:
                 dst_user = user
         if src_user is not None and dst_user is not None:
-            src_user['Balance'] -= amount
-            dst_user['Balance'] += amount
-            print(f'Transfered {amount} from account nr.{src_acc} to account nr. {dst_acc}.')
+            src_user['Balance'] = float(src_user['Balance']) - amount
+            dst_user['Balance'] = float(dst_user['Balance']) + amount
+            update_user_list(src_user)
+            update_user_list(dst_user)
+            print(f'Transfered {amount} from account nr:{src_acc} to account nr:{dst_acc}.')
             return True
         else:
             return False
@@ -127,13 +138,13 @@ def multi_threaded_client(connection, client_id):
                 if account_exit(account_number):
                     connection.sendall(str.encode('Account exists'))
                 else:
-                    connection.sendall(str.encode(f'Account number {account_number} not found.'))
+                    connection.sendall(str.encode(f'Account nr:{account_number} not found.'))
             elif command[0] == 'login' and len(command) == 2:
                 password = command[1]
                 user = login(password)
                 if user is not None and user['AccountNumber'] == account_number:
                     authorized = True
-                    # connection.sendall(str.encode('Login successful'))
+                    print(f'Account nr:{account_number} authorized. Open access.')
                     json_user_data = json.dumps(user)
                     connection.sendall(json_user_data.encode('utf-8'))
                 else:
@@ -142,12 +153,17 @@ def multi_threaded_client(connection, client_id):
                 connection.sendall(str.encode(f'Unauthorized. Please log in first.'))
         else:
             # user is authorized and can access bank functions
-            if command[0] == 'deposit' and len(command) == 3:
+
+            if command[0] == 'balance' and len(command) == 1:
+                print(f'Balance checking for account nr:{account_number}')
+                connection.sendall(f'Your balance: {get_balance(account_number)}'.encode('utf-8'))
+
+            elif command[0] == 'deposit' and len(command) == 3:
                 amount = float(command[2])
                 account_number = int(command[1])
                 account = get_user(account_number)
                 if deposit(account, amount):
-                    connection.sendall(f'Deposited {amount} into the account nr. {account_number}'.encode('utf-8'))
+                    connection.sendall(f'Deposited {amount} into the account nr:{account_number}'.encode('utf-8'))
                     break
                 else:
                     connection.sendall(str.encode(f'Invalid deposit amount.'))
@@ -158,7 +174,7 @@ def multi_threaded_client(connection, client_id):
                 account = get_user(account_number)
                 if withdraw(account, amount):
                     connection.sendall(
-                        f'{amount} has been withdrawn from account nr. {account_number}. New balance: {account["Balance"]}'.encode(
+                        f'{amount} has been withdrawn from account nr:{account_number}. New balance: {account["Balance"]}'.encode(
                             'utf-8'))
                 else:
                     connection.sendall(str.encode(f'Invalid withdraw amount.'))
@@ -171,11 +187,12 @@ def multi_threaded_client(connection, client_id):
                         f'Successfully transferred {amount} from {src_acc} to {dst_acc}.'.encode('utf-8'))
                 else:
                     connection.sendall(str.encode(f'Transfer failed.'))
-            elif command[0] == 'logout':
+            elif command[0] == 'logout' and len(command) == 2:
                 authorized = False
                 account_number = None
                 password = None
                 connection.sendall(str.encode(f'Logged out.'))
+                print(f'Account nr:{command[1]} has been logged out.')
             else:
                 connection.sendall(str.encode(f'Unknown command: {data.decode("utf-8")}'))
 
