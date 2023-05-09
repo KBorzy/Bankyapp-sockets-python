@@ -163,8 +163,7 @@ def multi_threaded_client(connection, client_id):
                 account_number = int(command[1])
                 account = get_user(account_number)
                 if deposit(account, amount):
-                    connection.sendall(f'Deposited {amount} into the account nr:{account_number}'.encode('utf-8'))
-                    break
+                    connection.sendall(f'Deposited {amount} into the account nr:{account_number}. New balance: {account["Balance"]}'.encode('utf-8'))
                 else:
                     connection.sendall(str.encode(f'Invalid deposit amount.'))
 

@@ -49,7 +49,7 @@ if res.decode('utf-8') == 'Account exists':
 
         while True:
             # prompt user for command
-            command = input('Please enter a command (deposit, withdraw, transfer): ').strip().split()
+            command = input('Please enter a command (balance,deposit, withdraw, transfer,logout): ').strip().split()
             if len(command) > 0:
                 # handle deposit command
                 if command[0] == 'balance' and len(command) == 1:
