@@ -36,11 +36,11 @@ res = ClientMultiSocket.recv(1024)
 login = input('Please enter your login: ')
 
 # send login to server
-ClientMultiSocket.send(str.encode(f'admin {login}'))
+ClientMultiSocket.send(str.encode(f'account {login}'))
 res = ClientMultiSocket.recv(1024)
 
 # check if account number exists on server
-if res.decode('utf-8') == 'Admin exists':
+if res.decode('utf-8') == 'Account exists':
 
     # prompt user for password
     password = input('Please enter your password: ')
@@ -68,13 +68,14 @@ if res.decode('utf-8') == 'Admin exists':
             command = input('Please enter a command (accounts, create, modify, logout): ').strip().split()
             if len(command) > 0:
                 if command[0] == 'accounts' and len(command) == 1:
+                    ClientMultiSocket.send(str.encode(f'accounts'))
                     res = receive_data(ClientMultiSocket)
-
                     try:
                         accounts = json.loads(res)
                         show_accounts(accounts)
+                        continue
                     except json.JSONDecodeError as e:
-                        print("Błąd parsowania JSON:", e)
+                        print("Parsing JSON error:", e)
 
 
                 elif command[0] == 'create' and len(command) == 1:
