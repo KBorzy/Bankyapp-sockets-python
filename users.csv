@@ -1,8 +1,11 @@
 AccountNumber,Name,Password,Balance
-111,Alice,pass123,20730.0
-456,Bob,pass456,2410.5
+111,Alice,pass123,20820.0
+456,Julius,pass456,2460.5
 789,Charlie,pass789,750.25
 429,John,Doe,-1040.0
 693,John,Doe,10.0
 728,Jenna,Henna,50.0
 451,Jan,pass,10.0
+500,Piotr,piotr,5000.0
+455,Philip,password,950.0
+825,Barbara,password,500.0

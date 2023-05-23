@@ -116,6 +116,16 @@ def create_account(name, password, balance):
     return account
 
 
+def change_name(account_number, name):
+    user = get_user(account_number)
+    if user:
+        user['Name'] = name
+        update_user_list(user)
+        print(f'Name updated for account nr:{account_number}. New name: {name}')
+        return True
+    else:
+        return False
+
 load_users()
 
 try:
@@ -161,6 +171,7 @@ def multi_threaded_client(connection, client_id):
                     connection.sendall(json_user_data.encode('utf-8'))
                 else:
                     connection.sendall(str.encode('Incorrect password or account number.'))
+                    print('Login attempt..Incorrect password or account number.')
         else:
             connection.sendall(str.encode(f'Unauthorized. Please log in first.'))
 
@@ -172,13 +183,34 @@ def multi_threaded_client(connection, client_id):
                 b = json.dumps(users).encode('utf-8')
                 connection.sendall(b)
                 print('Accounts details has been sended to admin client')
-
-            if command[0] == 'create' and len(command) == 4:
+            elif command[0] == 'create' and len(command) == 4:
                 account_name = command[1]
                 account_password = command[2]
                 account_balance = command[3]
                 create_account(account_name,account_password,account_balance)
                 connection.sendall(str.encode('Account created successfully.'))
+            elif command[0] == 'modify' and len(command) == 2:
+                account_number = command[1]
+                user = get_user(account_number)
+                if user is not None:
+                    connection.sendall(f'Account {user}'.encode('utf-8'))
+                else:
+                    connection.sendall('Account not found'.encode('utf-8'))
+            elif command[0] == 'change' and len(command) == 4:
+                account_number = command[2]
+                new_name = command[3]
+                if change_name(account_number,new_name):
+                    connection.sendall(f'Changed name for account: {account_number}'.encode('utf-8'))
+                else:
+                    connection.sendall('Something went wrong..'.encode('utf-8'))
+            elif command[0] == 'show details' and len(command) == 2:
+                account_number = command[1]
+                connection.sendall(f'Details: {get_user(account_number)}'.encode('utf-8'))
+            elif command[0] == 'logout' and len(command) == 1:
+                authorized = False
+                connection.sendall(str.encode(f'Logged out.'))
+                print(f'Admin has been logged out.')
+
             else:
                 connection.sendall(str.encode(f'Unknown command: {data.decode("utf-8")}'))
         else:
@@ -225,6 +257,7 @@ def multi_threaded_client(connection, client_id):
     def handle_command(command):
         if not authorized:
             handle_account(command)
+            return
         else:
             handle_authorized(command)
 
@@ -234,7 +267,6 @@ def multi_threaded_client(connection, client_id):
         if not data:
             break
         command = data.decode('utf-8').strip().split()
-
         handle_command(command)
 
     connection.close()

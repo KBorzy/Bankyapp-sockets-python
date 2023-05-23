@@ -18,11 +18,13 @@ def receive_data(conn):
             break
     return data.decode('utf-8')
 
+
 def show_accounts(accounts):
     for acc in accounts:
         for val in acc.values():
             print(val, end=' ')
         print()
+
 
 print('Waiting for connection response')
 
@@ -33,6 +35,7 @@ except socket.error as e:
 
 res = ClientMultiSocket.recv(1024)
 # prompt user for account number
+print('Login: admin, Password: password')
 login = input('Please enter your login: ')
 
 # send login to server
@@ -65,7 +68,7 @@ if res.decode('utf-8') == 'Account exists':
         while True:
 
             # prompt user for command
-            command = input('Please enter a command (accounts, create, modify, logout): ').strip().split()
+            command = input('Please enter a command (accounts, create, modify {number_of_accounts}, logout): ').strip().split()
             if len(command) > 0:
                 if command[0] == 'accounts' and len(command) == 1:
                     ClientMultiSocket.send(str.encode(f'accounts'))
@@ -77,7 +80,6 @@ if res.decode('utf-8') == 'Account exists':
                     except json.JSONDecodeError as e:
                         print("Parsing JSON error:", e)
 
-
                 elif command[0] == 'create' and len(command) == 1:
                     print("Enter account details.")
                     account_name = input("Enter name: ")
@@ -85,34 +87,39 @@ if res.decode('utf-8') == 'Account exists':
                     account_balance = float(input("Enter balance: "))
                     ClientMultiSocket.send(str.encode(f'create {account_name} {account_password} {account_balance}'))
                     res = ClientMultiSocket.recv(1024)
-                    print(res.decode('utf-8'))
                     continue
 
                 elif command[0] == 'modify' and len(command) == 2:
                     account_number = int(command[1])
                     ClientMultiSocket.send(str.encode(f'modify {account_number}'))
                     res = ClientMultiSocket.recv(1024)
-                    print(res.decode('utf-8'))
+                    respond = res.decode('utf-8')
+                    if respond != 'Account not found':
+                        print(respond)
+                        print("Select an option:")
+                        print("- - - - \"change name\" | to change account name")
+                        print("- - - - \"show details\" | to show account details")
+                        sub_command = input().strip()
 
-                    print("Select an option:")
-                    print("- - - - \"change name\" | to change account name")
-                    print("- - - - \"show details\" | to show account details")
-                    sub_command = input().strip()
+                        if sub_command == 'change name':
+                            new_name = input("Enter new name: ")
+                            ClientMultiSocket.sendall(str.encode(f"change name {account_number} {new_name}"))
+                            res = ClientMultiSocket.recv(1024)
+                            print(res.decode('utf-8'))
+                            continue
 
-                    if sub_command == 'change name':
-                        new_name = input("Enter new name: ")
-                        ClientMultiSocket.send(str.encode(f"change_name {account_number} {new_name}"))
-                        res = ClientMultiSocket.recv(1024)
-                        print(res.decode('utf-8'))
-                    elif sub_command == 'show details':
-                        ClientMultiSocket.send(str.encode(f"show_details {account_number}"))
-                        res = ClientMultiSocket.recv(1024)
-                        print(res.decode('utf-8'))
+                        elif sub_command == 'show details':
+                            ClientMultiSocket.send(str.encode(f"show details {account_number}"))
+                            res = ClientMultiSocket.recv(1024)
+                            print(res.decode('utf-8'))
+                            continue
+                        else:
+                            print('Invalid command. Please try again.')
                     else:
-                        print('Invalid command. Please try again.')
+                        print(respond)
 
                 elif command[0] == 'logout' and len(command) == 1:
-                    ClientMultiSocket.send(str.encode(f'logout {login}'))
+                    ClientMultiSocket.send(str.encode(f'logout'))
                     res = ClientMultiSocket.recv(1024)
                     print(res.decode('utf-8'))
                     break
