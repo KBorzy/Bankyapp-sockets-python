@@ -61,7 +61,7 @@ if res.decode('utf-8') == 'Account exists':
 
                 elif command[0] == 'deposit' and len(command) == 2:
                     amount = int(command[1])
-                    ClientMultiSocket.send(str.encode(f'deposit {account_number} {amount}'))
+                    ClientMultiSocket.send(str.encode(f'deposit {amount}'))
                     res = ClientMultiSocket.recv(1024)
                     print(res.decode('utf-8'))
                     continue
@@ -69,7 +69,7 @@ if res.decode('utf-8') == 'Account exists':
                 # handle withdraw command
                 elif command[0] == 'withdraw' and len(command) == 2:
                     amount = int(command[1])
-                    ClientMultiSocket.send(str.encode(f'withdraw {account_number} {amount}'))
+                    ClientMultiSocket.send(str.encode(f'withdraw {amount}'))
                     res = ClientMultiSocket.recv(1024)
                     print(res.decode('utf-8'))
                     continue
@@ -78,13 +78,13 @@ if res.decode('utf-8') == 'Account exists':
                 elif command[0] == 'transfer' and len(command) == 3:
                     dst_acc = command[1]
                     amount = float(command[2])
-                    ClientMultiSocket.send(str.encode(f'transfer {account_number} {dst_acc} {amount}'))
+                    ClientMultiSocket.send(str.encode(f'transfer {dst_acc} {amount}'))
                     res = ClientMultiSocket.recv(1024)
                     print(res.decode('utf-8'))
                     continue
 
                 elif command[0] == 'logout' and len(command) == 1:
-                    ClientMultiSocket.send(str.encode(f'logout {account_number}'))
+                    ClientMultiSocket.send(str.encode(f'logout'))
                     res = ClientMultiSocket.recv(1024)
                     print(res.decode('utf-8'))
                     break

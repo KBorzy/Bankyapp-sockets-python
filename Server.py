@@ -9,6 +9,7 @@ host = '127.0.0.1'
 port = 2223
 ThreadCount = 0
 users = []
+client_ports = {}  # Słownik przechowujący przypisane porty dla klientów
 ADMIN_LOGIN = 'admin'
 ADMIN_PASSWORD = 'password'
 
@@ -32,12 +33,14 @@ def account_exist(account_number):
     for user in users:
         if user['AccountNumber'] == account_number:
             return True
+    return False
 
 
 def login(password):
     for user in users:
         if user['Password'] == password:
             return user
+    return None
 
 
 def load_users():
@@ -52,14 +55,13 @@ def update_users():
     with open('users.csv', 'w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=['AccountNumber', 'Name', 'Password', 'Balance'])
         writer.writeheader()
-        for user in users:
-            writer.writerow(user)
+        writer.writerows(users)
         print('The users list has been updated.')
 
 
 def update_user_list(account):
     for user in users:
-        if account['AccountNumber'] in user:
+        if account['AccountNumber'] == user['AccountNumber']:
             user.update(account)
     update_users()
 
@@ -68,7 +70,7 @@ def deposit(account, amount):
     if amount > 0:
         account['Balance'] = float(account['Balance']) + amount
         update_user_list(account)
-        print(f'Deposited {amount} into the account nr:{account["AccountNumber"]}')
+        print(f'Deposited {amount} into the account nr: {account["AccountNumber"]}')
         print(f'New balance: {account["Balance"]}')
         return True
     else:
@@ -79,7 +81,7 @@ def withdraw(account, amount):
     if amount > 0:
         account['Balance'] = float(account['Balance']) - amount
         update_user_list(account)
-        print(f'{amount} has been withdrawn to account nr:{account["AccountNumber"]}')
+        print(f'{amount} has been withdrawn from account nr: {account["AccountNumber"]}')
         print(f'New balance: {account["Balance"]}')
         return True
     else:
@@ -100,18 +102,19 @@ def transfer(src_acc, dst_acc, amount):
             dst_user['Balance'] = float(dst_user['Balance']) + amount
             update_user_list(src_user)
             update_user_list(dst_user)
-            print(f'Transfered {amount} from account nr:{src_acc} to account nr:{dst_acc}.')
+            print(f'Transferred {amount} from account nr: {src_acc} to account nr: {dst_acc}.')
             return True
         else:
             return False
     else:
         return False
 
+
 def create_account(name, password, balance):
     account_number = ''.join(random.choices('0123456789', k=3))
     account = {'AccountNumber': account_number, 'Name': name, 'Password': password, 'Balance': balance}
     users.append(account)
-    print(f'Account has been created: Account nr:{account_number}, name: {name}, balance:{balance}')
+    print(f'Account has been created: Account nr: {account_number}, name: {name}, balance: {balance}')
     update_users()
     return account
 
@@ -121,10 +124,11 @@ def change_name(account_number, name):
     if user:
         user['Name'] = name
         update_user_list(user)
-        print(f'Name updated for account nr:{account_number}. New name: {name}')
+        print(f'Name updated for account nr: {account_number}. New name: {name}')
         return True
     else:
         return False
+
 
 load_users()
 
@@ -133,13 +137,11 @@ try:
 except socket.error as e:
     print(str(e))
 
-print('Socket is listening..')
+print('Socket is listening...')
 ServerSideSocket.listen(5)
 
 
-
-
-def multi_threaded_client(connection, client_id):
+def multi_threaded_client(connection, client_id, port):
     connection.send(str.encode('Server is working:'))
 
     account_number = None
@@ -154,24 +156,26 @@ def multi_threaded_client(connection, client_id):
             if account_exist(account_number) or account_number == 'admin':
                 connection.sendall(str.encode('Account exists'))
             else:
-                connection.sendall(str.encode(f'Account nr:{account_number} not found.'))
+                connection.sendall(str.encode(f'Account nr: {account_number} not found.'))
         elif command[0] == 'login' and len(command) == 2:
             password = command[1]
             if password == ADMIN_PASSWORD and account_number == ADMIN_LOGIN:
                 authorized = True
                 is_admin = True
+
                 connection.sendall(str.encode('Admin login successful.'))
                 print('Admin has been authorized. Open access')
             else:
                 user = login(password)
                 if user is not None and user['AccountNumber'] == account_number:
                     authorized = True
-                    print(f'Account nr:{account_number} authorized. Open access.')
+                    client_ports[port] = account_number
+                    print(f'Account nr: {account_number} authorized. Open access.')
                     json_user_data = json.dumps(user)
                     connection.sendall(json_user_data.encode('utf-8'))
                 else:
                     connection.sendall(str.encode('Incorrect password or account number.'))
-                    print('Login attempt..Incorrect password or account number.')
+                    print('Login attempt... Incorrect password or account number.')
         else:
             connection.sendall(str.encode(f'Unauthorized. Please log in first.'))
 
@@ -182,12 +186,12 @@ def multi_threaded_client(connection, client_id):
                 print('Sending accounts details to client (admin)')
                 b = json.dumps(users).encode('utf-8')
                 connection.sendall(b)
-                print('Accounts details has been sended to admin client')
+                print('Accounts details has been sent to admin client')
             elif command[0] == 'create' and len(command) == 4:
                 account_name = command[1]
                 account_password = command[2]
                 account_balance = command[3]
-                create_account(account_name,account_password,account_balance)
+                create_account(account_name, account_password, account_balance)
                 connection.sendall(str.encode('Account created successfully.'))
             elif command[0] == 'modify' and len(command) == 2:
                 account_number = command[1]
@@ -199,58 +203,61 @@ def multi_threaded_client(connection, client_id):
             elif command[0] == 'change' and len(command) == 4:
                 account_number = command[2]
                 new_name = command[3]
-                if change_name(account_number,new_name):
+                if change_name(account_number, new_name):
                     connection.sendall(f'Changed name for account: {account_number}'.encode('utf-8'))
                 else:
-                    connection.sendall('Something went wrong..'.encode('utf-8'))
-            elif command[0] == 'show details' and len(command) == 2:
+                    connection.sendall('Something went wrong...'.encode('utf-8'))
+            elif command[0] == 'show' and len(command) == 2:
                 account_number = command[1]
                 connection.sendall(f'Details: {get_user(account_number)}'.encode('utf-8'))
             elif command[0] == 'logout' and len(command) == 1:
                 authorized = False
-                connection.sendall(str.encode(f'Logged out.'))
-                print(f'Admin has been logged out.')
+                client_ports.pop(port)
+                connection.sendall(str.encode('Logged out.'))
+                print('Admin has been logged out.')
 
             else:
                 connection.sendall(str.encode(f'Unknown command: {data.decode("utf-8")}'))
         else:
             if command[0] == 'balance' and len(command) == 1:
-                print(f'Balance checking for account nr:{account_number}')
-                connection.sendall(f'Your balance: {get_balance(account_number)}'.encode('utf-8'))
-            elif command[0] == 'deposit' and len(command) == 3:
-                amount = float(command[2])
-                account_number = int(command[1])
+                print(f'Balance checking for account nr: {account_number}')
+                connection.sendall(
+                    f'Your balance: {get_balance(account_number)}'.encode('utf-8'))
+            elif command[0] == 'deposit' and len(command) == 2:
+                amount = float(command[1])
+                account_number = client_ports.get(port)
                 account = get_user(account_number)
                 if deposit(account, amount):
-                    connection.sendall(f'Deposited {amount} into the account nr:{account_number}'.encode('utf-8'))
+                    connection.sendall(
+                        f'Deposited {amount} into the account nr: {account_number}'.encode('utf-8'))
 
                 else:
-                    connection.sendall(str.encode(f'Invalid deposit amount.'))
-            elif command[0] == 'withdraw' and len(command) == 3:
-                amount = float(command[2])
-                account_number = int(command[1])
+                    connection.sendall(str.encode('Invalid deposit amount.'))
+            elif command[0] == 'withdraw' and len(command) == 2:
+                amount = float(command[1])
+                account_number = client_ports.get(port)
                 account = get_user(account_number)
                 if withdraw(account, amount):
                     connection.sendall(
-                        f'{amount} has been withdrawn from account nr:{account_number}. New balance: {account["Balance"]}'.encode(
+                        f'{amount} has been withdrawn from account nr: {account_number}. New balance: {account["Balance"]}'.encode(
                             'utf-8'))
                 else:
-                    connection.sendall(str.encode(f'Invalid withdraw amount.'))
-            elif command[0] == 'transfer' and len(command) == 4:
-                src_acc = command[1]
-                dst_acc = command[2]
-                amount = float(command[3])
+                    connection.sendall(str.encode('Invalid withdraw amount.'))
+            elif command[0] == 'transfer' and len(command) == 3:
+                src_acc = client_ports.get(port)
+                dst_acc = command[1]
+                amount = float(command[2])
                 if transfer(src_acc, dst_acc, amount):
                     connection.sendall(
                         f'Successfully transferred {amount} from {src_acc} to {dst_acc}.'.encode('utf-8'))
                 else:
-                    connection.sendall(str.encode(f'Transfer failed.'))
-            elif command[0] == 'logout' and len(command) == 2:
+                    connection.sendall(str.encode('Transfer failed.'))
+            elif command[0] == 'logout' and len(command) == 1:
                 authorized = False
                 account_number = None
                 password = None
-                connection.sendall(str.encode(f'Logged out.'))
-                print(f'Account nr:{command[1]} has been logged out.')
+                connection.sendall(str.encode('Logged out.'))
+                print(f'Account nr: {client_ports.get(port)} has been logged out.')
             else:
                 connection.sendall(str.encode(f'Unknown command: {data.decode("utf-8")}'))
 
@@ -275,7 +282,7 @@ def multi_threaded_client(connection, client_id):
 while True:
     Client, address = ServerSideSocket.accept()
     print('Connected to: ' + address[0] + ':' + str(address[1]))
-    start_new_thread(multi_threaded_client, (Client, ThreadCount + 1))
+    start_new_thread(multi_threaded_client, (Client, ThreadCount + 1, address[1]))
     ThreadCount += 1
     print('Thread Number: ' + str(ThreadCount))
 
