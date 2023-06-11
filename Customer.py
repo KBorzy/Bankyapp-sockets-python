@@ -61,9 +61,12 @@ if res.decode('utf-8') == 'Account exists':
 
                 elif command[0] == 'deposit' and len(command) == 2:
                     amount = int(command[1])
-                    ClientMultiSocket.send(str.encode(f'deposit {amount}'))
-                    res = ClientMultiSocket.recv(1024)
-                    print(res.decode('utf-8'))
+                    if amount <= 0:
+                        print('Wrong amount. Must be above 0.')
+                    else:
+                        ClientMultiSocket.send(str.encode(f'deposit {amount}'))
+                        res = ClientMultiSocket.recv(1024)
+                        print(res.decode('utf-8'))
                     continue
 
                 # handle withdraw command
@@ -77,7 +80,7 @@ if res.decode('utf-8') == 'Account exists':
                 # handle transfer command
                 elif command[0] == 'transfer' and len(command) == 3:
                     dst_acc = command[1]
-                    amount = float(command[2])
+                    amount = int(command[2])
                     ClientMultiSocket.send(str.encode(f'transfer {dst_acc} {amount}'))
                     res = ClientMultiSocket.recv(1024)
                     print(res.decode('utf-8'))

@@ -9,7 +9,7 @@ host = '127.0.0.1'
 port = 2223
 ThreadCount = 0
 users = []
-client_ports = {}  # Słownik przechowujący przypisane porty dla klientów
+client_ports = {}
 ADMIN_LOGIN = 'admin'
 ADMIN_PASSWORD = 'password'
 
@@ -78,7 +78,7 @@ def deposit(account, amount):
 
 
 def withdraw(account, amount):
-    if amount > 0:
+    if 0 < amount < float(account['Balance']):
         account['Balance'] = float(account['Balance']) - amount
         update_user_list(account)
         print(f'{amount} has been withdrawn from account nr: {account["AccountNumber"]}')
@@ -89,7 +89,8 @@ def withdraw(account, amount):
 
 
 def transfer(src_acc, dst_acc, amount):
-    if amount > 0:
+    src_user = get_user(src_acc)
+    if 0 < amount < float(src_user['Balance']):
         src_user = None
         dst_user = None
         for user in users:
@@ -170,7 +171,7 @@ def multi_threaded_client(connection, client_id, port):
                 if user is not None and user['AccountNumber'] == account_number:
                     authorized = True
                     client_ports[port] = account_number
-                    print(f'Account nr: {account_number} authorized. Open access.')
+                    print(f'Account nr: {account_number} authorized. Port: {[port]}. Open access.')
                     json_user_data = json.dumps(user)
                     connection.sendall(json_user_data.encode('utf-8'))
                 else:
@@ -251,7 +252,7 @@ def multi_threaded_client(connection, client_id, port):
                     connection.sendall(
                         f'Successfully transferred {amount} from {src_acc} to {dst_acc}.'.encode('utf-8'))
                 else:
-                    connection.sendall(str.encode('Transfer failed.'))
+                    connection.sendall(str.encode('Transfer failed. Invalid amount.'))
             elif command[0] == 'logout' and len(command) == 1:
                 authorized = False
                 account_number = None
