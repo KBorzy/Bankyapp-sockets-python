@@ -192,8 +192,11 @@ def multi_threaded_client(connection, client_id, port):
                 account_name = command[1]
                 account_password = command[2]
                 account_balance = command[3]
-                create_account(account_name, account_password, account_balance)
-                connection.sendall(str.encode('Account created successfully.'))
+                if float(account_balance) < 0:
+                    connection.sendall(str.encode('Wrong amount.'))
+                else:
+                    create_account(account_name, account_password, account_balance)
+                    connection.sendall(str.encode('Account created successfully.'))
             elif command[0] == 'modify' and len(command) == 2:
                 account_number = command[1]
                 user = get_user(account_number)
@@ -208,8 +211,8 @@ def multi_threaded_client(connection, client_id, port):
                     connection.sendall(f'Changed name for account: {account_number}'.encode('utf-8'))
                 else:
                     connection.sendall('Something went wrong...'.encode('utf-8'))
-            elif command[0] == 'show' and len(command) == 2:
-                account_number = command[1]
+            elif command[0] == 'show' and len(command) == 3:
+                account_number = command[2]
                 connection.sendall(f'Details: {get_user(account_number)}'.encode('utf-8'))
             elif command[0] == 'logout' and len(command) == 1:
                 authorized = False

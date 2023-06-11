@@ -87,6 +87,7 @@ if res.decode('utf-8') == 'Account exists':
                     account_balance = float(input("Enter balance: "))
                     ClientMultiSocket.send(str.encode(f'create {account_name} {account_password} {account_balance}'))
                     res = ClientMultiSocket.recv(1024)
+                    print(res)
                     continue
 
                 elif command[0] == 'modify' and len(command) == 2:
